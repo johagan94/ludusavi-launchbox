@@ -33,7 +33,7 @@ Inspired by and modeled after [ludusavi-playnite](https://github.com/mtkennerly/
 
 GitHub automatically shows "Source code" downloads on every release. Those are for developers and are not the plugin.
 
-For normal installation, download the release asset named `LudusaviLaunchBox.dll`.
+For normal installation, download the installer asset named `LudusaviLaunchBox-Setup-<version>.exe` (or, if you prefer to place the file yourself, the `LudusaviLaunchBox.dll` asset).
 
 ### 1. Install Ludusavi
 
@@ -97,14 +97,32 @@ ludusavi cloud sync --api
 
 ### 5. Install the Plugin
 
-1. Download `LudusaviLaunchBox.dll` from the [latest release](https://github.com/jackohagan94-afk/ludusavi-launchbox/releases)
-2. Drop it into your LaunchBox `Plugins` folder:
-   ```
-   C:\Users\<You>\LaunchBox\Plugins\LudusaviLaunchBox.dll
-   ```
-3. Restart LaunchBox
+**Option A — Installer (recommended).** Download `LudusaviLaunchBox-Setup-<version>.exe` from the [latest release](https://github.com/johagan94/ludusavi-launchbox/releases) and run it. It finds your LaunchBox folder, drops the plugin into `Plugins`, and — because the installer writes the file itself — LaunchBox loads it with no "blocked DLL" prompt. On first run, Windows SmartScreen may warn that the publisher is unknown; click **More info → Run anyway**.
 
-Do not install the release source `.zip` or `.tar.gz`; LaunchBox needs the compiled `.dll`.
+**Option B — Manual DLL.** Download `LudusaviLaunchBox.dll` from the [latest release](https://github.com/johagan94/ludusavi-launchbox/releases), drop it into your LaunchBox `Plugins` folder, then **unblock it** (see below):
+
+```
+C:\Users\<You>\LaunchBox\Plugins\LudusaviLaunchBox.dll
+```
+
+Restart LaunchBox after installing. Do not install the release source `.zip` or `.tar.gz`; LaunchBox needs the compiled `.dll`.
+
+#### Unblock the DLL (manual installs only)
+
+If you install the DLL by hand and LaunchBox shows:
+
+> The plugin "…\LudusaviLaunchBox.dll" could not be loaded because Windows is preventing access to it for security reasons.
+
+that is Windows' **Mark of the Web** — a flag added to *every* file you download in a browser. It is not specific to this plugin and is not fixed by code signing. Clear it one of two ways, then restart LaunchBox:
+
+- Right-click the DLL → **Properties** → tick **Unblock** → **OK**, or
+- Run in PowerShell:
+
+  ```powershell
+  Get-ChildItem "$env:USERPROFILE\LaunchBox\Plugins" -Filter *.dll | Unblock-File
+  ```
+
+The installer (Option A) avoids this step entirely.
 
 ### 6. Configure the Plugin
 
@@ -180,7 +198,7 @@ Requires [.NET 9.0 SDK](https://dotnet.microsoft.com/download).
 
 ```powershell
 # Clone
-git clone https://github.com/YOUR_USER/ludusavi-launchbox.git
+git clone https://github.com/johagan94/ludusavi-launchbox.git
 cd ludusavi-launchbox
 
 # Build
@@ -193,16 +211,23 @@ The project references `Unbroken.LaunchBox.Plugins.dll` from your LaunchBox inst
 
 ## Releasing
 
-Release builds are signed via **Azure Trusted Signing** to prevent LaunchBox from blocking the plugin.
+Pushing a `v*` tag triggers the release workflow, which builds the plugin, compiles the installer, and publishes two assets:
 
-Push a tag to trigger the release workflow:
+- `LudusaviLaunchBox-Setup-<version>.exe` — the installer (recommended for users)
+- `LudusaviLaunchBox.dll` — the bare DLL, for manual installs
 
 ```powershell
 git tag v1.0.3
 git push origin v1.0.3
 ```
 
-### Required GitHub Secrets
+Build the installer locally with `scripts\build-installer.ps1` (requires [Inno Setup](https://jrsoftware.org/isdl.php) — `winget install JRSoftware.InnoSetup`).
+
+### Code signing (optional)
+
+> **Signing does not fix the "blocked DLL" error.** That error is Windows' Mark of the Web, which is stamped onto files at download time and is independent of any signature. The installer solves it by writing the DLL locally; manual installs are solved by unblocking — see [Unblock the DLL](#unblock-the-dll-manual-installs-only).
+
+What signing *does* do is remove the SmartScreen "unknown publisher" warning shown when a user runs the installer `.exe`. It is entirely optional: if the Azure Trusted Signing secrets below are present, the workflow signs the DLL and the installer; if they are absent, the workflow still produces a working, unsigned installer.
 
 | Secret | Description |
 |---|---|
@@ -212,13 +237,7 @@ git push origin v1.0.3
 | `TRUSTED_SIGNING_ACCOUNT_NAME` | Azure Trusted Signing account name |
 | `TRUSTED_SIGNING_CERT_PROFILE` | Certificate profile name |
 
-### Setup Azure Trusted Signing
-
-1. Create an [Azure subscription](https://azure.microsoft.com/free) (free tier works)
-2. Follow [Microsoft's guide](https://learn.microsoft.com/en-us/azure/trusted-signing/how-to-signing-integrations) to create a Trusted Signing account
-3. Create a certificate profile (Public Trust or Private)
-4. Create a service principal with `Trusted Signing Certificate Profile Signer` role
-5. Add the secrets above to your GitHub repo settings
+Setup: create an [Azure subscription](https://azure.microsoft.com/free) (free tier works), follow [Microsoft's guide](https://learn.microsoft.com/en-us/azure/trusted-signing/how-to-signing-integrations) to create a Trusted Signing account and a certificate profile (Public Trust or Private), create a service principal with the `Trusted Signing Certificate Profile Signer` role, and add the secrets above to your GitHub repo settings.
 
 ## License
 
